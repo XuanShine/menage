@@ -11,17 +11,21 @@ db.bind(provider='sqlite', filename=os.path.join(C, 'database.sqlite'), create_d
 db.generate_mapping(create_tables=True)
 
 
+def nowToStr():
+    return datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
+
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
-@app.post("/iam/{user}")
-async def hello(user: str):
+@app.post("/iam/{username}")
+async def hello(username: str):
     with db_session:
-        if User.get(name=user) is not None:
+        if (user := User.get(name=username)) is not None:
+            Historique(user=user, date=nowToStr(), message=f"Set Cookie {username}")
             content = {"message": "cookie set"}
             response = JSONResponse(content=content)
-            response.set_cookie(key="user", value=user)
+            response.set_cookie(key="user", value=username)
             return response
 
 @app.get("/menage/listeChambres/{date}")
@@ -33,10 +37,11 @@ async def listeChambre(date : str):
                 "chambres": [chambre.json() for chambre in query]}
 
 @app.post("/menage/set/{date}/{user}/{chambre}")
-async def setChambreANettoyer(date: str, user: str, chambre: int):
+async def setChambreANettoyer(date: str, username: str, chambre: int):
     "date: ddmmaaaa"
     with db_session:
-        user = User[user]
+        user = User[username]
+        Historique(user=user, date=nowToStr(), message=f"{username}: {date}+{chambre}")
         chambre = Chambre[chambre]
         if (res := ChambreANettoyer.get(date=date, chambre=chambre, user=user)) is None:
             res = ChambreANettoyer(user=user, chambre=chambre, date=date)
@@ -44,11 +49,12 @@ async def setChambreANettoyer(date: str, user: str, chambre: int):
         json = res.json()
     return json
 
-@app.delete("/menage/delete/{date}/{user}/{chambre}")
-async def deleteChambreANettoyer(date: str, user: str, chambre: int):
+@app.delete("/menage/delete/{date}/{username}/{chambre}")
+async def deleteChambreANettoyer(date: str, username: str, chambre: int):
     "date: ddmmaaaa"
     with db_session:
-        user = User[user]
+        user = User[username]
+        Historique(user=user, date=nowToStr(), message=f"{username}: {date}-{chambre}")
         chambre = Chambre[chambre]
         if (res := ChambreANettoyer.get(date=date, chambre=chambre, user=user)) is not None:
             data_return = res.json().copy()
@@ -60,33 +66,33 @@ async def deleteChambreANettoyer(date: str, user: str, chambre: int):
 
 
 @app.get("/horaire/status")
-async def horaires2(user: Annotated[str | None, Cookie()] = None):
-    if user is None:
+async def horaires(username: Annotated[str | None, Cookie()] = None):
+    if username is None:
         return {"message": "please set cookie ’user’. Go to /iam/{user}"}
         
     with db_session:
-        user = User[user]
+        user = User[username]
         return {"user": user.json(),
                 "horaires": [horaire.json() for horaire in user.horaires]}
 
 
 @app.post("/horaire/arrive")
-async def horaireArrive(user: Annotated[str | None, Cookie()] = None):
-    if user is None:
+async def horaireArrive(username: Annotated[str | None, Cookie()] = None):
+    if username is None:
         return {"message": "please set cookie ’user’. Go to /iam/{user}"}
-      
+    
     with db_session:
-        time = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-        res = Horaire(time=time, etat=True, user=User[user])
+        Historique(user=User[username], date=nowToStr(), message=f"{username}: arrive")
+        res = Horaire(time=nowToStr(), etat=True, user=User[username])
         return res.json()
 
 
 @app.post("/horaire/depart")
-async def horaireDepart(user: Annotated[str | None, Cookie()] = None):
-    if user is None:
+async def horaireDepart(username: Annotated[str | None, Cookie()] = None):
+    if username is None:
         return {"message": "please set cookie ’user’. Go to /iam/{user}"}
       
     with db_session:
-        time = datetime.now().strftime("%d/%m/%Y - %H:%M:%S")
-        res = Horaire(time=time, etat=False, user=User[user])
+        Historique(user=User[username], date=nowToStr(), message=f"{username}: arrive")
+        res = Horaire(time=nowToStr(), etat=False, user=User[username])
         return res.json()
