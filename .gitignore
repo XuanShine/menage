@@ -9,3 +9,4 @@ HotelRates/data.csv
 HotelRates/data2.csv
 /familyHotel
 /.venv
+*.sqlite
