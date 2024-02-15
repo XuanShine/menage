@@ -1,0 +1,11 @@
+*.log
+/.pytest_cache
+/.vscode
+/__pycache__
+*.pyc
+/venv
+/Pricelytical0.5-master/*
+HotelRates/data.csv
+HotelRates/data2.csv
+/familyHotel
+/.venv
